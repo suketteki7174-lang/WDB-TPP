@@ -403,7 +403,7 @@ nav{width:100%;overflow:hidden}
   <section id="wdbAuthBox" class="wdb-auth-box">
     <h3>LOGIN ADMIN WDB</h3>
     <p>Masuk menggunakan akun admin yang telah terdaftar di Supabase.</p>
-    <form id="wdbLoginForm" class="admin-form">
+    <form id="wdbLoginForm" class="admin-form" onsubmit="return window.wdbHandleLogin(event)">
       <label>Email Admin<input id="wdbLoginEmail" type="email" autocomplete="username" required placeholder="Email admin"></label>
       <label>Password<input id="wdbLoginPassword" type="password" autocomplete="current-password" required placeholder="Password"></label>
       <div class="admin-actions"><button type="submit">Login Admin</button><span id="wdbAuthStatus" role="status">Silakan login untuk mengelola konten.</span></div>
@@ -577,8 +577,43 @@ removeGallery=async function(id){return wdbDelete('wdb_galeri',id)};
 async function wdbRefreshAll(){await renderPosts();await renderTeam();await renderSidebarTeam();await renderAds();await renderAnnouncements();await renderGalleryPage()}
 function wdbSetAuthUI(session){wdbCloudSession=session;const box=document.getElementById('wdbAuthBox'),workspace=document.getElementById('wdbAdminWorkspace'),signed=document.getElementById('wdbSignedInAs');if(box)box.hidden=!!session;if(workspace)workspace.hidden=!session;if(signed)signed.textContent=session?'Login sebagai '+(session.user.email||'Admin WDB'):'';}
 async function wdbStartRealtime(){wdbRealtimeChannels.forEach(c=>wdbCloud.removeChannel(c));wdbRealtimeChannels=[];for(const table of ['wdb_berita','wdb_tim_tpp','wdb_iklan','wdb_pengumuman','wdb_galeri']){const channel=wdbCloud.channel('wdb-'+table).on('postgres_changes',{event:'*',schema:'public',table},()=>{wdbRefreshAll().catch(e=>console.error('WDB realtime:',e))}).subscribe();wdbRealtimeChannels.push(channel)}}
-const wdbLoginForm=document.getElementById('wdbLoginForm');
-if(wdbLoginForm)wdbLoginForm.addEventListener('submit',async e=>{e.preventDefault();const status=document.getElementById('wdbAuthStatus');const btn=wdbLoginForm.querySelector('button[type=submit]');btn.disabled=true;status.textContent='Memeriksa akun...';try{const {data,error}=await wdbCloud.auth.signInWithPassword({email:document.getElementById('wdbLoginEmail').value.trim(),password:document.getElementById('wdbLoginPassword').value});if(error)throw error;const check=await wdbCloud.rpc('is_wdb_admin');if(check.error||check.data!==true){await wdbCloud.auth.signOut();throw new Error('Akun berhasil masuk, tetapi belum terdaftar sebagai Admin WDB.');}wdbSetAuthUI(data.session);await wdbRefreshAll();status.textContent='Login berhasil.'}catch(err){status.textContent='Login gagal: '+(err.message||'Periksa email dan password.')}finally{btn.disabled=false}});
+// Handler login dipanggil langsung oleh atribut onsubmit pada form.
+window.wdbHandleLogin=async function(e){
+ e.preventDefault();
+ const form=document.getElementById('wdbLoginForm');
+ const status=document.getElementById('wdbAuthStatus');
+ const btn=form?.querySelector('button[type=submit]');
+ if(btn)btn.disabled=true;
+ if(status)status.textContent='Menghubungkan ke Supabase...';
+ try{
+  if(!window.supabase || typeof window.supabase.createClient!=='function') throw new Error('Pustaka Supabase belum berhasil dimuat. Periksa koneksi internet lalu muat ulang halaman.');
+  const email=document.getElementById('wdbLoginEmail')?.value.trim();
+  const password=document.getElementById('wdbLoginPassword')?.value;
+  if(!email || !password) throw new Error('Email dan password wajib diisi.');
+  const client=window.wdbCloud || window.supabase.createClient('https://afzbcqnbgxtpffrqorfy.supabase.co','sb_publishable_bLIv3hwfommmCUo3PIacQw_4_M1Z2zq');
+  window.wdbCloud=client;
+  const {data,error}=await client.auth.signInWithPassword({email,password});
+  if(error) throw error;
+  const check=await client.rpc('is_wdb_admin');
+  if(check.error || check.data!==true){
+   await client.auth.signOut();
+   throw new Error('Login diterima, tetapi akun ini belum terdaftar sebagai Admin WDB.');
+  }
+  if(typeof window.wdbSetAuthUI==='function') window.wdbSetAuthUI(data.session);
+  const box=document.getElementById('wdbAuthBox');
+  const workspace=document.getElementById('wdbAdminWorkspace');
+  const signed=document.getElementById('wdbSignedInAs');
+  if(box)box.hidden=true;
+  if(workspace)workspace.hidden=false;
+  if(signed)signed.textContent='Login sebagai '+(data.user?.email||email);
+  if(typeof window.wdbRefreshAll==='function') await window.wdbRefreshAll();
+  if(status)status.textContent='Login berhasil.';
+ }catch(err){
+  if(status)status.textContent='Login gagal: '+(err?.message||'Terjadi kesalahan. Silakan coba lagi.');
+  console.error('WDB login:',err);
+ }finally{if(btn)btn.disabled=false;}
+ return false;
+};
 const wdbLogout=document.getElementById('wdbLogoutBtn');if(wdbLogout)wdbLogout.addEventListener('click',async()=>{await wdbCloud.auth.signOut();wdbSetAuthUI(null)});
 (async()=>{try{const {data}=await wdbCloud.auth.getSession();let session=data.session;if(session){const check=await wdbCloud.rpc('is_wdb_admin');if(check.error||check.data!==true){await wdbCloud.auth.signOut();session=null;}}wdbSetAuthUI(session);await wdbRefreshAll();await wdbStartRealtime();wdbCloud.auth.onAuthStateChange(async(_event,nextSession)=>{if(nextSession){const check=await wdbCloud.rpc('is_wdb_admin');if(check.error||check.data!==true){await wdbCloud.auth.signOut();return;}}wdbSetAuthUI(nextSession);if(nextSession)wdbRefreshAll().catch(console.error)})}catch(err){console.error('WDB Supabase belum tersambung:',err);const st=document.getElementById('wdbAuthStatus');if(st)st.textContent='Koneksi belum berhasil: '+(err.message||'Periksa konfigurasi Supabase.')}})();
 
