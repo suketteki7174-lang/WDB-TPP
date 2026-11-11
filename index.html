@@ -2984,10 +2984,10 @@ catch (err) {
 <div class="wdb-ad-viewer" id="wdbAdViewer" aria-hidden="true"><div class="wdb-ad-viewer-panel" role="dialog" aria-modal="true" aria-label="Tampilan iklan"><button class="wdb-ad-viewer-close" type="button" aria-label="Tutup">×</button><button class="wdb-ad-viewer-nav wdb-ad-viewer-prev" type="button" aria-label="Iklan sebelumnya">‹</button><button class="wdb-ad-viewer-nav wdb-ad-viewer-next" type="button" aria-label="Iklan berikutnya">›</button><div class="wdb-ad-viewer-title" id="wdbAdViewerTitle"></div><img id="wdbAdViewerImage" alt="Iklan WDB"><div class="wdb-ad-viewer-count" id="wdbAdViewerCount"></div><a id="wdbAdViewerLink" class="wdb-ad-viewer-link" target="_blank" rel="noopener">Kunjungi tautan iklan</a></div></div>
 
 <script>
-/* Navigasi tombol Kembali Android: riwayat menu internal WDB */
+/* Navigasi tombol Kembali Android: simpan tampilan SEBELUM menu dibuka */
 (function(){
-  if (window.__wdbBackNavigationReady) return;
-  window.__wdbBackNavigationReady = true;
+  if (window.__wdbBackNavigationReadyV2) return;
+  window.__wdbBackNavigationReadyV2 = true;
   const pageIds = ['articleDetail','galleryPage','teamDirectoryPage'];
   function snapshot(){
     const visible = {};
@@ -2996,39 +2996,35 @@ catch (err) {
       visible,
       admin: document.body.classList.contains('admin-mode'),
       filter: (typeof filter !== 'undefined' ? filter : 'Semua'),
-      scrollY: window.scrollY || 0
+      scrollY: window.scrollY || 0,
+      hash: location.hash || ''
     };
   }
   function restore(state){
     if(!state) return;
-    pageIds.forEach(id=>{
-      const el=document.getElementById(id);
-      if(el) el.hidden = !(state.visible && state.visible[id]);
-    });
+    pageIds.forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=!(state.visible && state.visible[id]);});
     document.body.classList.toggle('admin-mode',!!state.admin);
     if(typeof setFilter==='function' && state.filter) setFilter(state.filter);
-    const anyOverlay = pageIds.some(id=>state.visible && state.visible[id]);
-    document.body.style.overflow = anyOverlay ? 'hidden' : '';
+    const anyOverlay=pageIds.some(id=>state.visible && state.visible[id]);
+    document.body.style.overflow=anyOverlay?'hidden':'';
     requestAnimationFrame(()=>window.scrollTo({top:Math.max(0,state.scrollY||0),behavior:'auto'}));
   }
   try { history.replaceState({wdbSnapshot:snapshot()},'',location.href); } catch(e) {}
   document.addEventListener('click',function(ev){
     const link=ev.target && ev.target.closest ? ev.target.closest('nav a, .wdb-berita-submenu a') : null;
     if(!link) return;
-    // Jangan membuat riwayat untuk tautan eksternal atau tombol yang bukan navigasi portal.
     const href=link.getAttribute('href')||'';
     if(!href.startsWith('#')) return;
+    // Simpan kondisi sebelum navigasi agar tombol Kembali memulihkan halaman sebelumnya.
+    const previous=snapshot();
     setTimeout(()=>{
-      try {
-        const next=snapshot();
-        history.pushState({wdbSnapshot:next},'', '#wdb-menu-'+Date.now());
-      } catch(e) {}
-    },80);
+      try { history.pushState({wdbSnapshot:previous},'', '#wdb-menu-'+Date.now()); }
+      catch(e) {}
+    },100);
   },true);
   window.addEventListener('popstate',function(ev){
     if(ev.state && ev.state.wdbSnapshot){restore(ev.state.wdbSnapshot);}
     else {
-      // Kondisi awal: tutup panel khusus dan kembali ke tampilan portal utama.
       pageIds.forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=true;});
       document.body.classList.remove('admin-mode');
       document.body.style.overflow='';
