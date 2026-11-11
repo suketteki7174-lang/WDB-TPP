@@ -2656,14 +2656,41 @@ renderPosts().catch(err=>{const s=document.getElementById('adminStatus');if(s)s.
  }
  async function openWdbAdViewer(ad){
    const viewer=document.getElementById('wdbAdViewer');if(!viewer||!ad)return;
-   if(!viewer.classList.contains('open')){try{history.pushState({wdbAdViewer:true},'',location.href);}catch(e){}}
    try{wdbViewerAds=await getAds();}catch(err){wdbViewerAds=[];}
    if(!wdbViewerAds.length)wdbViewerAds=[ad];
    wdbViewerIndex=Math.max(0,wdbViewerAds.findIndex(item=>item.id===ad.id));
    showWdbAdAt(wdbViewerIndex);
+   if(!viewer.classList.contains('open')){
+     try{
+       const state=Object.assign({},history.state||{},{wdbAdViewer:true});
+       history.pushState(state,'',location.href);
+       window.__wdbAdViewerHistoryEntry=true;
+     }catch(err){window.__wdbAdViewerHistoryEntry=false;}
+   }
    viewer.classList.add('open');viewer.setAttribute('aria-hidden','false');
  }
- function closeWdbAdViewer(){const viewer=document.getElementById('wdbAdViewer');if(viewer){const wasOpen=viewer.classList.contains('open');viewer.classList.remove('open');viewer.setAttribute('aria-hidden','true');if(wasOpen && history.state && history.state.wdbAdViewer){try{history.back();}catch(e){}}}}
+ function closeWdbAdViewerUI(){
+   const viewer=document.getElementById('wdbAdViewer');
+   if(viewer){viewer.classList.remove('open');viewer.setAttribute('aria-hidden','true');}
+ }
+ function closeWdbAdViewer(){
+   const viewer=document.getElementById('wdbAdViewer');
+   if(!viewer||!viewer.classList.contains('open'))return;
+   if(window.__wdbAdViewerHistoryEntry){
+     window.__wdbAdViewerHistoryEntry=false;
+     history.back();
+   }else{
+     closeWdbAdViewerUI();
+   }
+ }
+ // Tombol Kembali Android saat iklan terbuka: tutup iklan pada ketukan pertama.
+ window.addEventListener('popstate',function(){
+   const viewer=document.getElementById('wdbAdViewer');
+   if(viewer&&viewer.classList.contains('open')){
+     window.__wdbAdViewerHistoryEntry=false;
+     closeWdbAdViewerUI();
+   }
+ },true);
  // Delegasi event: markup viewer iklan berada setelah script, sehingga handler
  // langsung sebelumnya tidak menemukan tombol X saat halaman pertama dimuat.
  // Delegasi pada document tetap aktif dan aman untuk sentuhan HP.
@@ -3024,8 +3051,6 @@ catch (err) {
     },100);
   },true);
   window.addEventListener('popstate',function(ev){
-    const adViewer=document.getElementById('wdbAdViewer');
-    if(adViewer && adViewer.classList.contains('open')){closeWdbAdViewer();return;}
     if(ev.state && ev.state.wdbSnapshot){restore(ev.state.wdbSnapshot);}
     else {
       pageIds.forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=true;});
@@ -3063,3 +3088,5 @@ catch (err) {
 </script>
 
 </body></html>
+
+
