@@ -2984,54 +2984,88 @@ catch (err) {
 <div class="wdb-ad-viewer" id="wdbAdViewer" aria-hidden="true"><div class="wdb-ad-viewer-panel" role="dialog" aria-modal="true" aria-label="Tampilan iklan"><button class="wdb-ad-viewer-close" type="button" aria-label="Tutup">×</button><button class="wdb-ad-viewer-nav wdb-ad-viewer-prev" type="button" aria-label="Iklan sebelumnya">‹</button><button class="wdb-ad-viewer-nav wdb-ad-viewer-next" type="button" aria-label="Iklan berikutnya">›</button><div class="wdb-ad-viewer-title" id="wdbAdViewerTitle"></div><img id="wdbAdViewerImage" alt="Iklan WDB"><div class="wdb-ad-viewer-count" id="wdbAdViewerCount"></div><a id="wdbAdViewerLink" class="wdb-ad-viewer-link" target="_blank" rel="noopener">Kunjungi tautan iklan</a></div></div>
 
 <script>
-/* Navigasi tombol Kembali Android: simpan tampilan SEBELUM menu dibuka */
+/* Navigasi tombol Kembali Android/Chrome: riwayat menu internal WDB + penjaga halaman awal */
 (function(){
-  if (window.__wdbBackNavigationReadyV2) return;
-  window.__wdbBackNavigationReadyV2 = true;
+  if (window.__wdbBackNavigationReadyV3) return;
+  window.__wdbBackNavigationReadyV3 = true;
   const pageIds = ['articleDetail','galleryPage','teamDirectoryPage'];
+  let lastHomeBackAt = 0;
+  let backNoticeTimer = null;
+
   function snapshot(){
     const visible = {};
     pageIds.forEach(id=>{const el=document.getElementById(id);visible[id]=!!(el && !el.hidden);});
     return {
+      wdbSnapshot:true,
       visible,
       admin: document.body.classList.contains('admin-mode'),
       filter: (typeof filter !== 'undefined' ? filter : 'Semua'),
-      scrollY: window.scrollY || 0,
-      hash: location.hash || ''
+      scrollY: window.scrollY || 0
     };
   }
   function restore(state){
     if(!state) return;
-    pageIds.forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=!(state.visible && state.visible[id]);});
+    pageIds.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.hidden = !(state.visible && state.visible[id]);
+    });
     document.body.classList.toggle('admin-mode',!!state.admin);
     if(typeof setFilter==='function' && state.filter) setFilter(state.filter);
-    const anyOverlay=pageIds.some(id=>state.visible && state.visible[id]);
-    document.body.style.overflow=anyOverlay?'hidden':'';
+    const anyOverlay = pageIds.some(id=>state.visible && state.visible[id]);
+    document.body.style.overflow = anyOverlay ? 'hidden' : '';
     requestAnimationFrame(()=>window.scrollTo({top:Math.max(0,state.scrollY||0),behavior:'auto'}));
   }
-  try { history.replaceState({wdbSnapshot:snapshot()},'',location.href); } catch(e) {}
+  function showBackNotice(){
+    let notice=document.getElementById('wdbBackNotice');
+    if(!notice){
+      notice=document.createElement('div'); notice.id='wdbBackNotice';
+      notice.textContent='Tekan Kembali sekali lagi untuk keluar dari WDB';
+      notice.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:2147483647;background:#173f2e;color:#fff;padding:11px 16px;border-radius:24px;font:14px Arial,sans-serif;box-shadow:0 4px 18px #0005;max-width:90%;text-align:center;';
+      document.body.appendChild(notice);
+    }
+    notice.style.display='block';
+    clearTimeout(backNoticeTimer);
+    backNoticeTimer=setTimeout(()=>{notice.style.display='none';},2100);
+  }
+
+  // Entry dasar WDB tetap diberi penanda. Satu lapis guard di atasnya
+  // membuat tombol Back pertama di Beranda tidak langsung membuang pengunjung.
+  try {
+    const current=history.state;
+    if(!current || !current.wdbSnapshot){history.replaceState(snapshot(),'',location.href);}
+    history.pushState({wdbGuard:true,wdbSnapshot:snapshot()},'',location.href);
+  } catch(e) {}
+
   document.addEventListener('click',function(ev){
     const link=ev.target && ev.target.closest ? ev.target.closest('nav a, .wdb-berita-submenu a') : null;
     if(!link) return;
     const href=link.getAttribute('href')||'';
     if(!href.startsWith('#')) return;
-    // Simpan kondisi sebelum navigasi agar tombol Kembali memulihkan halaman sebelumnya.
-    const previous=snapshot();
+    // Simpan tampilan tujuan setelah handler menu lain selesai bekerja.
     setTimeout(()=>{
-      try { history.pushState({wdbSnapshot:previous},'', '#wdb-menu-'+Date.now()); }
-      catch(e) {}
-    },100);
+      try {
+        const next=snapshot();
+        history.pushState(next,'',location.href);
+      } catch(e) {}
+    },120);
   },true);
+
   window.addEventListener('popstate',function(ev){
-    if(ev.state && ev.state.wdbSnapshot){restore(ev.state.wdbSnapshot);}
-    else {
-      pageIds.forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=true;});
-      document.body.classList.remove('admin-mode');
-      document.body.style.overflow='';
+    if(ev.state && ev.state.wdbSnapshot){
+      restore(ev.state);
+      return;
     }
+    // Back dari Beranda: beri kesempatan keluar dengan menekan Back dua kali.
+    const now=Date.now();
+    if(now-lastHomeBackAt<2200){
+      lastHomeBackAt=0;
+      return; // biarkan Chrome kembali ke halaman sebelumnya
+    }
+    lastHomeBackAt=now;
+    try { history.pushState({wdbGuard:true,wdbSnapshot:snapshot()},'',location.href); } catch(e) {}
+    showBackNotice();
   });
-})();
-</script>
+})();</script>
 
 
 <script>
@@ -3060,34 +3094,3 @@ catch (err) {
 </script>
 
 </body></html>
-
-
-<script>
-/* Pengaman riwayat browser Android: tahan tombol Kembali di dalam WDB.
-   Riwayat menu internal yang sudah ada tetap dipakai; saat mencapai beranda,
-   satu entri pengaman dipasang lagi agar browser tidak langsung kembali ke Google. */
-(function(){
-  if (window.__wdbAndroidBackGuardV1) return;
-  window.__wdbAndroidBackGuardV1 = true;
-  var guardKey = '__wdbAndroidHomeGuard';
-  function isWdbState(state){
-    return !!(state && (state[guardKey] || state.wdbSnapshot));
-  }
-  function addGuard(){
-    try {
-      var current = history.state || {};
-      var next = Object.assign({}, current);
-      next[guardKey] = true;
-      history.pushState(next, '', location.href);
-    } catch (e) {}
-  }
-  /* Tambahkan entri duplikat pada saat WDB pertama kali dibuka. */
-  addGuard();
-  window.addEventListener('popstate', function(ev){
-    /* Bila browser mencoba keluar dari dokumen WDB, buat kembali pagar riwayat. */
-    if (!isWdbState(ev.state)) {
-      addGuard();
-    }
-  }, true);
-})();
-</script>
