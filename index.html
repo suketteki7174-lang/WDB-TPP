@@ -1126,7 +1126,10 @@ html,body{background:#fff!important;color:#24352c}
 .wdb-ad-viewer-panel{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;max-width:min(92vw,520px);max-height:92vh;padding:12px;border-radius:10px;background:#fff;box-shadow:0 10px 40px #0007}
 .wdb-ad-viewer-panel img{display:block;max-width:100%;max-height:75vh;object-fit:contain}
 .wdb-ad-viewer-title{font-weight:bold;color:#174b37;text-align:center;font-size:14px}
-.wdb-ad-viewer-close{position:absolute;top:6px;right:6px;width:34px;height:34px;border:0;border-radius:50%;background:#123d2b;color:#fff;font-size:22px;cursor:pointer}
+.wdb-ad-viewer-nav{position:absolute;z-index:19;top:50%;transform:translateY(-50%);width:42px;height:54px;border:1px solid #fff;border-radius:22px;background:#123d2beF;color:#fff;font-size:34px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 8px #0005}
+.wdb-ad-viewer-prev{left:5px}.wdb-ad-viewer-next{right:5px}
+.wdb-ad-viewer-count{font-size:11px;color:#64746c;text-align:center;min-height:14px}
+.wdb-ad-viewer-close{position:absolute;z-index:20;top:6px;right:6px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;border-radius:50%;background:#123d2b;color:#fff;font-size:26px;line-height:1;cursor:pointer;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .wdb-ad-viewer-link{display:none;padding:9px 16px;border-radius:5px;background:#174b37;color:#fff;font-size:12px;font-weight:bold;text-decoration:none}
 .wdb-ad-viewer-link.show{display:inline-block}
 @media(max-width:520px){
@@ -1236,6 +1239,56 @@ html,body{background:#fff!important;color:#24352c}
     width:180px!important;
     height:320px!important;
   }
+}
+
+
+
+/* POSISI IKLAN SESUAI AREA KOTAK MERAH PADA CONTOH:
+   Iklan mengisi kolom vertikal di sisi kanan foto utama saja,
+   mulai dekat atas hingga dekat bawah foto, tanpa menutup thumbnail. */
+.hero .feature{position:relative!important;overflow:hidden!important}
+.hero .feature>.photo.big{position:relative!important;z-index:0!important}
+.hero .feature>.ad-section{
+  position:absolute!important;z-index:5!important;
+  top:14px!important;right:14px!important;left:auto!important;bottom:auto!important;
+  width:min(24%,160px)!important;min-width:0!important;max-width:160px!important;
+  height:257px!important;min-height:0!important;max-height:none!important;
+  margin:0!important;padding:0!important;border:0!important;border-radius:5px!important;
+  overflow:hidden!important;box-shadow:0 2px 12px #0004!important;
+  background:transparent!important;transform:none!important;
+}
+.hero .feature>.ad-section .ad-heading{display:none!important}
+.hero .feature>.ad-section .ad-slider,
+.hero .feature>.ad-section .ad-slide,
+.hero .feature>.ad-section .ad-live-slide{
+  display:block!important;width:100%!important;height:100%!important;
+  min-height:0!important;max-height:none!important;aspect-ratio:auto!important;
+}
+.hero .feature>.ad-section .ad-slide img,
+.hero .feature>.ad-section .ad-live-slide img{
+  display:block!important;width:100%!important;height:100%!important;
+  object-fit:contain!important;object-position:center!important;
+}
+.hero .feature>.ad-section .ad-placeholder{
+  width:100%!important;height:100%!important;min-height:0!important;
+  aspect-ratio:auto!important;padding:8px!important;box-sizing:border-box!important;
+}
+@media(max-width:800px){
+  .hero .feature>.ad-section{
+    top:12px!important;right:10px!important;
+    width:min(27vw,148px)!important;max-width:148px!important;
+    height:196px!important;
+  }
+}
+@media(max-width:520px){
+  .hero .feature>.ad-section{
+    top:12px!important;right:8px!important;
+    width:min(27vw,126px)!important;max-width:126px!important;
+    height:196px!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .hero .feature>.ad-section .ad-slider .ad-slide.active{animation:none!important}
 }
 
 </style></head><body>
@@ -1371,13 +1424,13 @@ html,body{background:#fff!important;color:#24352c}
 
   </div>
   <div class="admin-tab-panel" data-admin-panel="iklan" hidden>
-  <div class="admin-subhead"><h3>FORMULIR IKLAN / MITRA</h3><p>Unggah materi iklan, isi nama pemasang iklan, dan tautan tujuan jika ada.</p></div>
+  <div class="admin-subhead"><h3>FORMULIR IKLAN / MITRA</h3><p>Unggah gambar iklan. Nama iklan dan tautan tujuan boleh dikosongkan.</p></div>
   <form id="adForm" class="admin-form">
     <div class="admin-two">
-      <label>Nama iklan / mitra<input id="adTitle" required placeholder="Nama produk, usaha, atau kegiatan"></label>
+      <label>Nama iklan / mitra (opsional)<input id="adTitle" placeholder="Boleh dikosongkan"></label>
       <label>Tautan tujuan (opsional)<input id="adLink" type="url" placeholder="https://..."></label>
     </div>
-    <label>Gambar iklan<input id="adImage" type="file" accept="image/*"></label>
+    <label>Gambar iklan (wajib)<input id="adImage" type="file" accept="image/*" required></label>
     <div class="admin-actions"><button type="submit">Simpan Iklan</button><span id="adStatus" aria-live="polite">Iklan akan ditampilkan pada slider iklan.</span></div>
   </form>
   <div class="news-manager">
@@ -2444,17 +2497,43 @@ renderPosts().catch(err=>{const s=document.getElementById('adminStatus');if(s)s.
  document.getElementById('galleryLightbox')?.addEventListener('click',e=>{if(e.target.id==='galleryLightbox')closeGalleryLightbox();});
 
  let adAutoTimer=null;
- function openWdbAdViewer(ad){
-   const viewer=document.getElementById('wdbAdViewer');if(!viewer||!ad)return;
+ let wdbViewerAds=[];
+ let wdbViewerIndex=0;
+ function showWdbAdAt(index){
+   if(!wdbViewerAds.length)return;
+   wdbViewerIndex=(index+wdbViewerAds.length)%wdbViewerAds.length;
+   const ad=wdbViewerAds[wdbViewerIndex];
    document.getElementById('wdbAdViewerTitle').textContent=ad.title||'Iklan WDB';
    const image=document.getElementById('wdbAdViewerImage');image.src=ad.image||'';image.alt=ad.title||'Iklan WDB';
    const link=document.getElementById('wdbAdViewerLink');
    if(ad.link){link.href=ad.link;link.classList.add('show');}else{link.removeAttribute('href');link.classList.remove('show');}
+   const count=document.getElementById('wdbAdViewerCount');if(count)count.textContent=(wdbViewerIndex+1)+' / '+wdbViewerAds.length;
+   const showArrows=wdbViewerAds.length>1;
+   document.querySelectorAll('#wdbAdViewer .wdb-ad-viewer-nav').forEach(btn=>btn.style.display=showArrows?'flex':'none');
+ }
+ async function openWdbAdViewer(ad){
+   const viewer=document.getElementById('wdbAdViewer');if(!viewer||!ad)return;
+   try{wdbViewerAds=await getAds();}catch(err){wdbViewerAds=[];}
+   if(!wdbViewerAds.length)wdbViewerAds=[ad];
+   wdbViewerIndex=Math.max(0,wdbViewerAds.findIndex(item=>item.id===ad.id));
+   showWdbAdAt(wdbViewerIndex);
    viewer.classList.add('open');viewer.setAttribute('aria-hidden','false');
  }
  function closeWdbAdViewer(){const viewer=document.getElementById('wdbAdViewer');if(viewer){viewer.classList.remove('open');viewer.setAttribute('aria-hidden','true');}}
- document.getElementById('wdbAdViewer')?.addEventListener('click',e=>{if(e.target.id==='wdbAdViewer'||e.target.closest('.wdb-ad-viewer-close'))closeWdbAdViewer();});
- document.addEventListener('keydown',e=>{if(e.key==='Escape')closeWdbAdViewer();});
+ // Delegasi event: markup viewer iklan berada setelah script, sehingga handler
+ // langsung sebelumnya tidak menemukan tombol X saat halaman pertama dimuat.
+ // Delegasi pada document tetap aktif dan aman untuk sentuhan HP.
+ document.addEventListener('click',function(e){
+   const closeBtn=e.target&&e.target.closest?e.target.closest('#wdbAdViewer .wdb-ad-viewer-close'):null;
+   if(closeBtn){e.preventDefault();e.stopPropagation();closeWdbAdViewer();return;}
+   const prevBtn=e.target&&e.target.closest?e.target.closest('#wdbAdViewer .wdb-ad-viewer-prev'):null;
+   if(prevBtn){e.preventDefault();e.stopPropagation();showWdbAdAt(wdbViewerIndex-1);return;}
+   const nextBtn=e.target&&e.target.closest?e.target.closest('#wdbAdViewer .wdb-ad-viewer-next'):null;
+   if(nextBtn){e.preventDefault();e.stopPropagation();showWdbAdAt(wdbViewerIndex+1);return;}
+   const viewer=document.getElementById('wdbAdViewer');
+   if(viewer&&e.target===viewer){e.preventDefault();closeWdbAdViewer();}
+ },true);
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeWdbAdViewer();else if(e.key==='ArrowLeft'&&document.getElementById('wdbAdViewer')?.classList.contains('open'))showWdbAdAt(wdbViewerIndex-1);else if(e.key==='ArrowRight'&&document.getElementById('wdbAdViewer')?.classList.contains('open'))showWdbAdAt(wdbViewerIndex+1);});
  async function renderAds(){
    const slider=document.getElementById('adSlider');if(!slider)return;if(adAutoTimer){clearInterval(adAutoTimer);adAutoTimer=null;}const ads=await getAds();slider.innerHTML='';
    if(!ads.length){
@@ -2498,7 +2577,7 @@ renderPosts().catch(err=>{const s=document.getElementById('adminStatus');if(s)s.
    document.getElementById('adStatus').textContent='Mode edit aktif. Pilih gambar baru jika ingin mengganti gambar.';
    document.getElementById('adForm').scrollIntoView({behavior:'smooth',block:'center'});
  }
- function resetAdForm(){document.getElementById('adForm').reset();editingAdId=null;document.getElementById('adImage').required=false;document.querySelector('#adForm button[type="submit"]').textContent='Simpan Iklan';}
+ function resetAdForm(){document.getElementById('adForm').reset();editingAdId=null;document.getElementById('adImage').required=true;document.querySelector('#adForm button[type="submit"]').textContent='Simpan Iklan';}
  async function deleteAd(id){const ad=(await getAds()).find(x=>x.id===id);if(!ad)return;if(!confirm('Hapus iklan "'+(ad.title||'')+'"?'))return;
    try{await removeAdRecord(id);if(editingAdId===id)resetAdForm();await renderAds();document.getElementById('adStatus').textContent='Iklan berhasil dihapus.'}
    catch(err){document.getElementById('adStatus').textContent='Gagal menghapus iklan: '+err.message}
@@ -2536,7 +2615,6 @@ document.getElementById('adForm').addEventListener('submit',async e=>{
   try{
     const title=document.getElementById('adTitle').value.trim(),link=document.getElementById('adLink').value.trim(),file=document.getElementById('adImage').files[0];
     const all=await getAds(),old=editingAdId?all.find(x=>x.id===editingAdId):null;
-    if(!title)throw new Error('Nama iklan wajib diisi.');
     if(!old&&!file)throw new Error('Pilih gambar iklan terlebih dahulu.');
     const image=file?await readImage(file):old.image;
     const record={id:editingAdId||(crypto.randomUUID?crypto.randomUUID():'ad-'+Date.now()),title,link,image,createdAt:old?.createdAt||Date.now()};
@@ -2744,5 +2822,86 @@ catch (err) {
 </script>
 
 
-<div class="wdb-ad-viewer" id="wdbAdViewer" aria-hidden="true"><div class="wdb-ad-viewer-panel" role="dialog" aria-modal="true" aria-label="Tampilan iklan"><button class="wdb-ad-viewer-close" type="button" aria-label="Tutup">×</button><div class="wdb-ad-viewer-title" id="wdbAdViewerTitle"></div><img id="wdbAdViewerImage" alt="Iklan WDB"><a id="wdbAdViewerLink" class="wdb-ad-viewer-link" target="_blank" rel="noopener">Kunjungi tautan iklan</a></div></div>
+<div class="wdb-ad-viewer" id="wdbAdViewer" aria-hidden="true"><div class="wdb-ad-viewer-panel" role="dialog" aria-modal="true" aria-label="Tampilan iklan"><button class="wdb-ad-viewer-close" type="button" aria-label="Tutup">×</button><button class="wdb-ad-viewer-nav wdb-ad-viewer-prev" type="button" aria-label="Iklan sebelumnya">‹</button><button class="wdb-ad-viewer-nav wdb-ad-viewer-next" type="button" aria-label="Iklan berikutnya">›</button><div class="wdb-ad-viewer-title" id="wdbAdViewerTitle"></div><img id="wdbAdViewerImage" alt="Iklan WDB"><div class="wdb-ad-viewer-count" id="wdbAdViewerCount"></div><a id="wdbAdViewerLink" class="wdb-ad-viewer-link" target="_blank" rel="noopener">Kunjungi tautan iklan</a></div></div>
+
+<script>
+/* Navigasi tombol Kembali Android: riwayat menu internal WDB */
+(function(){
+  if (window.__wdbBackNavigationReady) return;
+  window.__wdbBackNavigationReady = true;
+  const pageIds = ['articleDetail','galleryPage','teamDirectoryPage'];
+  function snapshot(){
+    const visible = {};
+    pageIds.forEach(id=>{const el=document.getElementById(id);visible[id]=!!(el && !el.hidden);});
+    return {
+      visible,
+      admin: document.body.classList.contains('admin-mode'),
+      filter: (typeof filter !== 'undefined' ? filter : 'Semua'),
+      scrollY: window.scrollY || 0
+    };
+  }
+  function restore(state){
+    if(!state) return;
+    pageIds.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.hidden = !(state.visible && state.visible[id]);
+    });
+    document.body.classList.toggle('admin-mode',!!state.admin);
+    if(typeof setFilter==='function' && state.filter) setFilter(state.filter);
+    const anyOverlay = pageIds.some(id=>state.visible && state.visible[id]);
+    document.body.style.overflow = anyOverlay ? 'hidden' : '';
+    requestAnimationFrame(()=>window.scrollTo({top:Math.max(0,state.scrollY||0),behavior:'auto'}));
+  }
+  try { history.replaceState({wdbSnapshot:snapshot()},'',location.href); } catch(e) {}
+  document.addEventListener('click',function(ev){
+    const link=ev.target && ev.target.closest ? ev.target.closest('nav a, .wdb-berita-submenu a') : null;
+    if(!link) return;
+    // Jangan membuat riwayat untuk tautan eksternal atau tombol yang bukan navigasi portal.
+    const href=link.getAttribute('href')||'';
+    if(!href.startsWith('#')) return;
+    setTimeout(()=>{
+      try {
+        const next=snapshot();
+        history.pushState({wdbSnapshot:next},'', '#wdb-menu-'+Date.now());
+      } catch(e) {}
+    },80);
+  },true);
+  window.addEventListener('popstate',function(ev){
+    if(ev.state && ev.state.wdbSnapshot){restore(ev.state.wdbSnapshot);}
+    else {
+      // Kondisi awal: tutup panel khusus dan kembali ke tampilan portal utama.
+      pageIds.forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=true;});
+      document.body.classList.remove('admin-mode');
+      document.body.style.overflow='';
+    }
+  });
+})();
+</script>
+
+
+<script>
+/* Pemulihan akses menu ADMIN WDB: tangani klik secara langsung dan konsisten di desktop maupun HP. */
+(function(){
+  if(window.__wdbAdminAccessRestored) return;
+  window.__wdbAdminAccessRestored=true;
+  function openAdminPanel(ev){
+    var link=ev.target && ev.target.closest ? ev.target.closest('nav a[href="#admin"]') : null;
+    if(!link) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+    var panel=document.getElementById('admin');
+    if(!panel) return;
+    document.body.classList.add('admin-mode');
+    panel.hidden=false;
+    panel.removeAttribute('hidden');
+    panel.style.display='block';
+    panel.style.visibility='visible';
+    panel.style.opacity='1';
+    window.setTimeout(function(){panel.scrollIntoView({behavior:'smooth',block:'start'});},30);
+  }
+  document.addEventListener('click',openAdminPanel,true);
+})();
+</script>
+
 </body></html>
