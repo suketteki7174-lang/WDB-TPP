@@ -3060,3 +3060,34 @@ catch (err) {
 </script>
 
 </body></html>
+
+
+<script>
+/* Pengaman riwayat browser Android: tahan tombol Kembali di dalam WDB.
+   Riwayat menu internal yang sudah ada tetap dipakai; saat mencapai beranda,
+   satu entri pengaman dipasang lagi agar browser tidak langsung kembali ke Google. */
+(function(){
+  if (window.__wdbAndroidBackGuardV1) return;
+  window.__wdbAndroidBackGuardV1 = true;
+  var guardKey = '__wdbAndroidHomeGuard';
+  function isWdbState(state){
+    return !!(state && (state[guardKey] || state.wdbSnapshot));
+  }
+  function addGuard(){
+    try {
+      var current = history.state || {};
+      var next = Object.assign({}, current);
+      next[guardKey] = true;
+      history.pushState(next, '', location.href);
+    } catch (e) {}
+  }
+  /* Tambahkan entri duplikat pada saat WDB pertama kali dibuka. */
+  addGuard();
+  window.addEventListener('popstate', function(ev){
+    /* Bila browser mencoba keluar dari dokumen WDB, buat kembali pagar riwayat. */
+    if (!isWdbState(ev.state)) {
+      addGuard();
+    }
+  }, true);
+})();
+</script>
