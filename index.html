@@ -2656,13 +2656,14 @@ renderPosts().catch(err=>{const s=document.getElementById('adminStatus');if(s)s.
  }
  async function openWdbAdViewer(ad){
    const viewer=document.getElementById('wdbAdViewer');if(!viewer||!ad)return;
+   if(!viewer.classList.contains('open')){try{history.pushState({wdbAdViewer:true},'',location.href);}catch(e){}}
    try{wdbViewerAds=await getAds();}catch(err){wdbViewerAds=[];}
    if(!wdbViewerAds.length)wdbViewerAds=[ad];
    wdbViewerIndex=Math.max(0,wdbViewerAds.findIndex(item=>item.id===ad.id));
    showWdbAdAt(wdbViewerIndex);
    viewer.classList.add('open');viewer.setAttribute('aria-hidden','false');
  }
- function closeWdbAdViewer(){const viewer=document.getElementById('wdbAdViewer');if(viewer){viewer.classList.remove('open');viewer.setAttribute('aria-hidden','true');}}
+ function closeWdbAdViewer(){const viewer=document.getElementById('wdbAdViewer');if(viewer){const wasOpen=viewer.classList.contains('open');viewer.classList.remove('open');viewer.setAttribute('aria-hidden','true');if(wasOpen && history.state && history.state.wdbAdViewer){try{history.back();}catch(e){}}}}
  // Delegasi event: markup viewer iklan berada setelah script, sehingga handler
  // langsung sebelumnya tidak menemukan tombol X saat halaman pertama dimuat.
  // Delegasi pada document tetap aktif dan aman untuk sentuhan HP.
@@ -2984,88 +2985,56 @@ catch (err) {
 <div class="wdb-ad-viewer" id="wdbAdViewer" aria-hidden="true"><div class="wdb-ad-viewer-panel" role="dialog" aria-modal="true" aria-label="Tampilan iklan"><button class="wdb-ad-viewer-close" type="button" aria-label="Tutup">×</button><button class="wdb-ad-viewer-nav wdb-ad-viewer-prev" type="button" aria-label="Iklan sebelumnya">‹</button><button class="wdb-ad-viewer-nav wdb-ad-viewer-next" type="button" aria-label="Iklan berikutnya">›</button><div class="wdb-ad-viewer-title" id="wdbAdViewerTitle"></div><img id="wdbAdViewerImage" alt="Iklan WDB"><div class="wdb-ad-viewer-count" id="wdbAdViewerCount"></div><a id="wdbAdViewerLink" class="wdb-ad-viewer-link" target="_blank" rel="noopener">Kunjungi tautan iklan</a></div></div>
 
 <script>
-/* Navigasi tombol Kembali Android/Chrome: riwayat menu internal WDB + penjaga halaman awal */
+/* Navigasi tombol Kembali Android: simpan tampilan SEBELUM menu dibuka */
 (function(){
-  if (window.__wdbBackNavigationReadyV3) return;
-  window.__wdbBackNavigationReadyV3 = true;
+  if (window.__wdbBackNavigationReadyV2) return;
+  window.__wdbBackNavigationReadyV2 = true;
   const pageIds = ['articleDetail','galleryPage','teamDirectoryPage'];
-  let lastHomeBackAt = 0;
-  let backNoticeTimer = null;
-
   function snapshot(){
     const visible = {};
     pageIds.forEach(id=>{const el=document.getElementById(id);visible[id]=!!(el && !el.hidden);});
     return {
-      wdbSnapshot:true,
       visible,
       admin: document.body.classList.contains('admin-mode'),
       filter: (typeof filter !== 'undefined' ? filter : 'Semua'),
-      scrollY: window.scrollY || 0
+      scrollY: window.scrollY || 0,
+      hash: location.hash || ''
     };
   }
   function restore(state){
     if(!state) return;
-    pageIds.forEach(id=>{
-      const el=document.getElementById(id);
-      if(el) el.hidden = !(state.visible && state.visible[id]);
-    });
+    pageIds.forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=!(state.visible && state.visible[id]);});
     document.body.classList.toggle('admin-mode',!!state.admin);
     if(typeof setFilter==='function' && state.filter) setFilter(state.filter);
-    const anyOverlay = pageIds.some(id=>state.visible && state.visible[id]);
-    document.body.style.overflow = anyOverlay ? 'hidden' : '';
+    const anyOverlay=pageIds.some(id=>state.visible && state.visible[id]);
+    document.body.style.overflow=anyOverlay?'hidden':'';
     requestAnimationFrame(()=>window.scrollTo({top:Math.max(0,state.scrollY||0),behavior:'auto'}));
   }
-  function showBackNotice(){
-    let notice=document.getElementById('wdbBackNotice');
-    if(!notice){
-      notice=document.createElement('div'); notice.id='wdbBackNotice';
-      notice.textContent='Tekan Kembali sekali lagi untuk keluar dari WDB';
-      notice.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:2147483647;background:#173f2e;color:#fff;padding:11px 16px;border-radius:24px;font:14px Arial,sans-serif;box-shadow:0 4px 18px #0005;max-width:90%;text-align:center;';
-      document.body.appendChild(notice);
-    }
-    notice.style.display='block';
-    clearTimeout(backNoticeTimer);
-    backNoticeTimer=setTimeout(()=>{notice.style.display='none';},2100);
-  }
-
-  // Entry dasar WDB tetap diberi penanda. Satu lapis guard di atasnya
-  // membuat tombol Back pertama di Beranda tidak langsung membuang pengunjung.
-  try {
-    const current=history.state;
-    if(!current || !current.wdbSnapshot){history.replaceState(snapshot(),'',location.href);}
-    history.pushState({wdbGuard:true,wdbSnapshot:snapshot()},'',location.href);
-  } catch(e) {}
-
+  try { history.replaceState({wdbSnapshot:snapshot()},'',location.href); } catch(e) {}
   document.addEventListener('click',function(ev){
     const link=ev.target && ev.target.closest ? ev.target.closest('nav a, .wdb-berita-submenu a') : null;
     if(!link) return;
     const href=link.getAttribute('href')||'';
     if(!href.startsWith('#')) return;
-    // Simpan tampilan tujuan setelah handler menu lain selesai bekerja.
+    // Simpan kondisi sebelum navigasi agar tombol Kembali memulihkan halaman sebelumnya.
+    const previous=snapshot();
     setTimeout(()=>{
-      try {
-        const next=snapshot();
-        history.pushState(next,'',location.href);
-      } catch(e) {}
-    },120);
+      try { history.pushState({wdbSnapshot:previous},'', '#wdb-menu-'+Date.now()); }
+      catch(e) {}
+    },100);
   },true);
-
   window.addEventListener('popstate',function(ev){
-    if(ev.state && ev.state.wdbSnapshot){
-      restore(ev.state);
-      return;
+    const adViewer=document.getElementById('wdbAdViewer');
+    if(adViewer && adViewer.classList.contains('open')){closeWdbAdViewer();return;}
+    if(ev.state && ev.state.wdbSnapshot){restore(ev.state.wdbSnapshot);}
+    else {
+      pageIds.forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=true;});
+      document.body.classList.remove('admin-mode');
+      document.body.style.overflow='';
     }
-    // Back dari Beranda: beri kesempatan keluar dengan menekan Back dua kali.
-    const now=Date.now();
-    if(now-lastHomeBackAt<2200){
-      lastHomeBackAt=0;
-      return; // biarkan Chrome kembali ke halaman sebelumnya
-    }
-    lastHomeBackAt=now;
-    try { history.pushState({wdbGuard:true,wdbSnapshot:snapshot()},'',location.href); } catch(e) {}
-    showBackNotice();
   });
-})();</script>
+})();
+</script>
 
 
 <script>
