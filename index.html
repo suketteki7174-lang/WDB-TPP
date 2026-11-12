@@ -1412,6 +1412,12 @@ html,body{background:#fff!important;color:#24352c}
   .stack.wdb-berita-terbaru-bawah{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
 }
 
+
+/* Thumbnail berita berupa gambar di dalam tautan: mendukung menu klik kanan browser */
+.photo.post-photo-link{display:block;padding:0;cursor:pointer;color:inherit}
+.photo.post-photo-link img{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.photo.post-photo-link:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
 </style>
 <style id="wdb-ad-portrait-zoom-only">
 /* Penyesuaian khusus iklan: rasio 9:16 seragam dan animasi zoom in lalu zoom out.
@@ -1920,9 +1926,7 @@ function renderPortalSections(){
   pageItems.forEach(post=>{
     const article=document.createElement('article');
     article.className='card';article.dataset.cat=post.category||'';article.dataset.wdbPost='1';article.dataset.postId=post.id;
-    const photo=document.createElement('div');photo.className='photo';
-    photo.textContent=post.image?'':(post.category||'Berita').toUpperCase();
-    if(post.image){photo.style.backgroundImage=`linear-gradient(#0003,#0003),url("${post.image}")`;photo.style.backgroundSize='cover';photo.style.backgroundPosition='center';}
+    const photo=makePostPhotoLink(post);
     const body=document.createElement('div');body.className='body';
     const cat=document.createElement('span');cat.className='cat';cat.textContent=post.category||'Berita';
     const title=document.createElement('h3');title.textContent=post.title||'Tanpa judul';
@@ -1933,7 +1937,6 @@ function renderPortalSections(){
     article.addEventListener('click',ev=>{
       openWdbArticle(post);
     });
-    article.addEventListener('contextmenu',ev=>{ev.preventDefault();});
     article.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();openWdbArticle(post);}});
     list.append(article);
   });
@@ -1978,10 +1981,29 @@ function showWdbCardLink(post,x,y){
  const close=e=>{if(!menu.contains(e.target)){menu.remove();document.removeEventListener('pointerdown',close,true);}};
  setTimeout(()=>document.addEventListener('pointerdown',close,true),0);
 }
+function makePostPhotoLink(post,extraClass=''){
+ const link=document.createElement('a');
+ link.className='photo post-photo-link '+extraClass;
+ link.href=location.href.split('#')[0].split('?')[0]+'?berita='+encodeURIComponent(post.id);
+ link.setAttribute('aria-label','Buka berita: '+(post.title||'Tanpa judul'));
+ if(post.image){
+  const img=document.createElement('img');
+  img.src=post.image;img.alt=post.title||'Foto berita';
+  link.append(img);
+ }else{
+  link.classList.add('blue');
+  link.textContent=(post.category||'BERITA').toUpperCase();
+ }
+ link.addEventListener('click',ev=>{
+  ev.preventDefault();ev.stopPropagation();openWdbArticle(post);
+ });
+ return link;
+}
 function updateFeatured(post){
  const feature=document.querySelector('.hero .feature');if(!feature||!post)return;
- const photo=feature.querySelector('.photo'),cat=feature.querySelector('.cat'),title=feature.querySelector('h3'),para=feature.querySelector('p'),meta=feature.querySelector('.meta');
- if(photo){photo.textContent=post.image?'':(post.category||'BERITA TERBARU');photo.style.backgroundImage=post.image?`linear-gradient(#0003,#0003),url("${post.image}")`:'';photo.style.backgroundSize='cover';photo.style.backgroundPosition='center';}
+ const oldPhoto=feature.querySelector('.photo'),cat=feature.querySelector('.cat'),title=feature.querySelector('h3'),para=feature.querySelector('p'),meta=feature.querySelector('.meta');
+ const photo=makePostPhotoLink(post,'big');
+ if(oldPhoto)oldPhoto.replaceWith(photo);
  // Galeri thumbnail juga ditampilkan di BERANDA, tepat di bawah foto utama berita pilihan.
  let homeGallery=feature.querySelector('.home-feature-media');
  if(!homeGallery){homeGallery=document.createElement('div');homeGallery.className='home-feature-media';photo.insertAdjacentElement('afterend',homeGallery);}
@@ -2005,14 +2027,11 @@ function updateFeatured(post){
  if(meta)meta.textContent=(post.author||'Redaksi WDB')+' • '+(post.date||'')+' • Berita terbaru';
  feature.style.cursor='pointer';
  feature.onclick=()=>openWdbArticle(post);
- feature.oncontextmenu=ev=>{ev.preventDefault();};
 }
 function makeMiniHighlight(post){
  const card=document.createElement('article');
  card.className='card mini';
- const photo=document.createElement('div');photo.className='photo '+(post.image?'':'blue');
- photo.textContent=post.image?'':(post.category||'BERITA').toUpperCase();
- if(post.image){photo.style.backgroundImage=`linear-gradient(#0003,#0003),url("${post.image}")`;photo.style.backgroundSize='cover';photo.style.backgroundPosition='center';}
+ const photo=makePostPhotoLink(post);
  const body=document.createElement('div');body.className='body';
  const cat=document.createElement('span');cat.className='cat';cat.textContent=post.category||'Berita';
  const title=document.createElement('h3');title.textContent=post.title||'Tanpa judul';
@@ -2023,7 +2042,6 @@ function makeMiniHighlight(post){
   if(card.dataset.longPressed==='1'){card.dataset.longPressed='0';ev.preventDefault();return;}
   openWdbArticle(post);
  });
- card.addEventListener('contextmenu',ev=>{ev.preventDefault();});
  let timer=null;
  card.addEventListener('touchstart',ev=>{
   card.dataset.longPressed='0';const t=ev.touches[0];
