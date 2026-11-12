@@ -2948,8 +2948,35 @@ document.getElementById('announcementForm').addEventListener('submit',e=>{
     document.getElementById('announcementStatus').textContent=wasEditing?'Pengumuman berhasil diperbarui.':'Pengumuman berhasil diterbitkan ke INFO TERKINI.';
   }catch(err){document.getElementById('announcementStatus').textContent='Gagal menyimpan pengumuman: '+(err.message||'Penyimpanan browser penuh.');}
 });
-// Sinkronkan INFO TERKINI setelah seluruh elemen halaman siap.
-try { renderAnnouncements(); }
+// INFO TERKINI membaca pengumuman yang telah disetujui Admin dari Supabase.
+async function loadApprovedAnnouncements(){
+  try{
+    const {data,error}=await wdbApprovedTeamClient
+      .from('wdb_pengumuman')
+      .select('id,judul,isi,tanggal,aktif')
+      .eq('aktif',true)
+      .order('tanggal',{ascending:false});
+    if(error) throw error;
+    const approved=(data||[]).map(row=>({
+      id:row.id,
+      title:row.judul||'',
+      text:row.isi||'',
+      date:row.tanggal||''
+    }));
+    const ticker=document.getElementById('tickerText');
+    if(ticker){
+      ticker.textContent=approved.length
+        ? approved.map(a=>'📢 '+a.title+' : '+a.text).join('     ◆     ')
+        : 'Belum ada pengumuman terbaru dari desa.';
+      ticker.classList.add('ticker-moving');
+    }
+  }catch(err){
+    console.error('INFO TERKINI gagal dimuat dari Supabase:',err);
+    renderAnnouncements();
+  }
+}
+// Tetap pertahankan fungsi lokal yang sudah ada; hanya sumber tampilan publik yang disinkronkan.
+try { renderAnnouncements(); loadApprovedAnnouncements(); }
 catch (err) {
   console.error('INFO TERKINI gagal dimuat:', err);
   const ticker = document.getElementById('tickerText');
