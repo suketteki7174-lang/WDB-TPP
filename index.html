@@ -282,6 +282,23 @@ nav{width:100%;overflow:hidden}
 @media(max-width:600px){#teamDirectoryPage{padding:9px}.team-directory-grid{grid-template-columns:1fr}.team-directory-person img,.team-directory-person .team-avatar{width:58px;height:66px;flex-basis:58px}.team-directory-top{align-items:flex-start}}
 
 
+
+/* Galeri thumbnail di bawah bagian BERITA LAINNYA pada beranda. */
+.home-gallery-section{margin:28px 0 8px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:10px}
+.home-gallery-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px;padding-bottom:12px;border-bottom:2px solid var(--g)}
+.home-gallery-heading h2{margin:0;color:var(--g);font-size:19px}
+.home-gallery-heading small{display:block;margin-top:5px;color:var(--muted);font-size:12px}
+.home-gallery-heading button{border:0;border-radius:6px;background:var(--g);color:#fff;padding:10px 13px;font-size:12px;font-weight:700;cursor:pointer}
+.home-gallery-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.home-gallery-card{min-width:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+.home-gallery-main{display:block;width:100%;height:170px;object-fit:cover;background:#edf2ed;cursor:zoom-in}
+.home-gallery-thumbs{display:flex;gap:6px;padding:7px;overflow-x:auto}
+.home-gallery-thumbs img{width:48px;height:42px;flex:0 0 48px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid #dce6de}
+.home-gallery-caption{padding:8px 10px 10px;color:var(--g);font-size:13px;font-weight:700;line-height:1.4}
+.home-gallery-empty{grid-column:1/-1;padding:16px;border:1px dashed var(--line);border-radius:7px;color:var(--muted);font-size:13px}
+@media(max-width:760px){.home-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-gallery-main{height:145px}}
+@media(max-width:480px){.home-gallery-section{padding:12px}.home-gallery-grid{gap:9px}.home-gallery-main{height:125px}.home-gallery-heading{align-items:flex-start}.home-gallery-heading button{padding:9px;font-size:11px}}
+
 /* Galeri foto: komponen tambahan terpisah, tidak mengubah gaya modul lama. */
 #sidebarGalleryPreview{cursor:pointer}#sidebarGalleryPreview:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .gallery-side-thumb{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
@@ -1507,7 +1524,12 @@ html,body{background:#fff!important;color:#24352c}
 <article class="card" data-cat="Wisata Desa"><div class="photo blue">WISATA DESA</div><div class="body"><span class="cat">Wisata Desa</span><h3>Potensi alam dan destinasi wisata desa</h3><p>Mengenalkan kekayaan alam, budaya, dan destinasi lokal.</p><div class="meta">Redaksi WDB</div></div></article>
 <article class="card" data-cat="Produk Desa"><div class="photo gold">PRODUK UNGGULAN</div><div class="body"><span class="cat">Produk Desa</span><h3>Produk lokal dan karya unggulan masyarakat desa</h3><p>Promosi produk, kerajinan, pangan, dan hasil usaha desa.</p><div class="meta">Redaksi WDB</div></div></article>
 <article class="card" data-cat="BUMDes"><div class="photo">BUM DESA</div><div class="body"><span class="cat">BUMDes</span><h3>Informasi usaha dan perkembangan BUM Desa</h3><p>Kabar unit usaha, inovasi, dan kontribusi BUMDes bagi desa.</p><div class="meta">Redaksi WDB</div></div></article>
-</div><div class="empty" id="empty">Belum ada berita lainnya pada kategori ini.</div><div id="newsPagination" class="wdb-article-pager"></div></section>
+</div><div class="empty" id="empty">Belum ada berita lainnya pada kategori ini.</div><div id="newsPagination" class="wdb-article-pager"></div>
+<section id="homeGallerySection" class="home-gallery-section" aria-label="Galeri Foto Desa">
+  <div class="home-gallery-heading"><div><h2>GALERI FOTO</h2><small>Dokumentasi kegiatan dan keindahan desa</small></div><button type="button" id="homeGallerySeeAll">Lihat Semua Foto</button></div>
+  <div id="homeGalleryGrid" class="home-gallery-grid"><p class="team-directory-empty">Memuat foto galeri...</p></div>
+</section>
+</section>
 <aside>
 <!-- Panel pencarian, galeri samping, dan kategori samping disembunyikan sesuai permintaan. Elemen pencarian tersembunyi dipertahankan agar skrip lama tetap berjalan. -->
 <div hidden aria-hidden="true"><input id="q" type="search"><button id="go" type="button">Cari</button></div>
@@ -2583,6 +2605,27 @@ renderPosts().catch(err=>{console.error('WDB: berita publik gagal dimuat dari Su
    const tx=db.transaction('gallery','readwrite');tx.objectStore('gallery').delete(id);
    tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error||new Error('Gagal menghapus foto galeri.'));
  });}
+
+ async function renderHomeGallery(){
+   const grid=document.getElementById('homeGalleryGrid');if(!grid)return;
+   const items=(await getGallery()).slice(0,6);grid.innerHTML='';
+   if(!items.length){grid.innerHTML='<div class="home-gallery-empty">Belum ada foto galeri yang disetujui untuk ditampilkan.</div>';return;}
+   items.forEach(item=>{
+     const images=(item.images||[]).filter(Boolean);if(!images.length)return;
+     const card=document.createElement('article');card.className='home-gallery-card';
+     const main=document.createElement('img');main.className='home-gallery-main';main.src=images[0];main.alt=item.title||'Foto kegiatan desa';
+     main.addEventListener('click',()=>openGalleryLightbox(main.src,item.title||'Foto galeri'));
+     card.append(main);
+     if(images.length>1){
+       const strip=document.createElement('div');strip.className='home-gallery-thumbs';
+       images.forEach((src,index)=>{const thumb=document.createElement('img');thumb.src=src;thumb.alt='Thumbnail '+(index+1);thumb.title='Tampilkan foto '+(index+1);
+         thumb.addEventListener('click',()=>{main.src=src;openGalleryLightbox(src,item.title||'Foto galeri');});strip.append(thumb);
+       });card.append(strip);
+     }
+     const caption=document.createElement('div');caption.className='home-gallery-caption';caption.textContent=item.title||'Dokumentasi kegiatan desa';card.append(caption);grid.append(card);
+   });
+ }
+ document.getElementById('homeGallerySeeAll')?.addEventListener('click',openGalleryPage);
  async function renderGalleryPage(){
    const grid=document.getElementById('galleryPageGrid');if(!grid)return;const items=await getGallery();grid.innerHTML='';
    if(!items.length){grid.innerHTML='<div class="team-directory-empty">Belum ada foto galeri. Admin dapat menambahkan foto melalui menu Isi Galeri.</div>';return;}
@@ -2682,7 +2725,7 @@ renderPosts().catch(err=>{console.error('WDB: berita publik gagal dimuat dari Su
    try{await removeGallery(id);if(editingGalleryId===id)resetGalleryForm();await refreshGalleryViews();document.getElementById('galleryStatus').textContent='Foto galeri berhasil dihapus.';}
    catch(err){document.getElementById('galleryStatus').textContent='Gagal menghapus foto: '+err.message;}
  }
- async function refreshGalleryViews(){await Promise.all([renderGalleryManager(),renderGallerySidebar()]);if(!document.getElementById('galleryPage').hidden)await renderGalleryPage();}
+ async function refreshGalleryViews(){await Promise.all([renderGalleryManager(),renderGallerySidebar(),renderHomeGallery()]);if(!document.getElementById('galleryPage').hidden)await renderGalleryPage();}
  document.getElementById('galleryCancelEdit')?.addEventListener('click',()=>{resetGalleryForm();document.getElementById('galleryStatus').textContent='Edit dibatalkan.';});
  document.getElementById('galleryForm')?.addEventListener('submit',async e=>{
    e.preventDefault();const status=document.getElementById('galleryStatus'),submit=e.target.querySelector('button[type="submit"]');submit.disabled=true;
