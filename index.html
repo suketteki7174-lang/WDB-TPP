@@ -1640,6 +1640,7 @@ html,body{background:#fff!important;color:#24352c}
   </div>
 </section>
 <footer><div class="foot"><div><b>WDB • WARTA DESA BONDOWOSO</b><p>Portal Informasi dan Berita TPP P3MD Kab. Bondowoso. Media publikasi kegiatan, informasi, pembangunan, dan potensi desa.</p></div><div><b>MENU INFORMASI</b><p>Berita Desa · Dana Desa · Pemerintahan · Wisata Desa · Pendampingan</p><p>© <span id="year"></span> WDB – TPP P3MD Kabupaten Bondowoso</p></div></div></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const d=new Date();
 document.getElementById('year').textContent=d.getFullYear();
@@ -1733,7 +1734,26 @@ const newsPageSize=6;
 
 async function renderPosts(){
   const posts=await getPosts();
-  cachedWdbPosts=posts.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  let publishedRemote=[];
+  try{
+    if(window.supabase?.createClient){
+      const client=window.supabase.createClient('https://afzbcqnbgxtpffrqorfy.supabase.co','sb_publishable_bLIv3hwfommmCUo3PIacQw_4_M1Z2zq');
+      const {data,error}=await client.from('wdb_berita').select('id,judul,kategori,penulis,isi,foto_url,status,created_at').eq('status','terbit').order('created_at',{ascending:false});
+      if(error)throw error;
+      publishedRemote=(data||[]).map(row=>{
+        const created=row.created_at?new Date(row.created_at):new Date();
+        const image=typeof row.foto_url==='string'&&/^https?:\/\//i.test(row.foto_url)?row.foto_url:'';
+        return {id:'supabase-'+row.id,remoteId:row.id,title:row.judul||'Tanpa judul',category:row.kategori||'Berita Desa',author:row.penulis||'Kontributor WDB',content:row.isi||'',date:created.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),createdAt:created.getTime(),publishedAt:created.toISOString(),image,media:image?[{type:'image',src:image,name:'Foto utama berita'}]:[],status:row.status};
+      });
+      console.info('[WDB] Berita terbit Supabase:',publishedRemote.length);
+    }
+  }catch(err){
+    console.error('[WDB] Gagal memuat berita Supabase:',err);
+    const status=document.getElementById('adminStatus');
+    if(status)status.textContent='Berita online belum dapat dimuat: '+(err.message||err);
+  }
+  const merged=[...publishedRemote,...posts.filter(p=>!publishedRemote.some(r=>String(r.remoteId)===String(p.remoteId||p.id)))];
+  cachedWdbPosts=merged.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   await renderNewsManager();
   renderPortalSections();
 }
