@@ -1738,12 +1738,14 @@ async function renderPosts(){
   try{
     if(window.supabase?.createClient){
       const client=window.supabase.createClient('https://afzbcqnbgxtpffrqorfy.supabase.co','sb_publishable_bLIv3hwfommmCUo3PIacQw_4_M1Z2zq');
-      const {data,error}=await client.from('wdb_berita').select('id,judul,kategori,penulis,isi,foto_url,status,created_at').eq('status','terbit').order('created_at',{ascending:false});
+      const {data,error}=await client.from('wdb_berita').select('id,judul,kategori,penulis,isi,foto_url,media_urls,status,created_at').eq('status','terbit').order('created_at',{ascending:false});
       if(error)throw error;
       publishedRemote=(data||[]).map(row=>{
         const created=row.created_at?new Date(row.created_at):new Date();
         const image=typeof row.foto_url==='string'&&/^https?:\/\//i.test(row.foto_url)?row.foto_url:'';
-        return {id:'supabase-'+row.id,remoteId:row.id,title:row.judul||'Tanpa judul',category:row.kategori||'Berita Desa',author:row.penulis||'Kontributor WDB',content:row.isi||'',date:created.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),createdAt:created.getTime(),publishedAt:created.toISOString(),image,media:image?[{type:'image',src:image,name:'Foto utama berita'}]:[],status:row.status};
+        const extra=Array.isArray(row.media_urls)?row.media_urls:(typeof row.media_urls==='string'?(()=>{try{return JSON.parse(row.media_urls)||[]}catch{return []}})():[]);
+        const media=[...(image?[{type:'image',src:image,name:'Foto utama berita'}]:[]),...extra.filter(m=>m&&typeof m.src==='string'&&/^https?:\/\//i.test(m.src)).map(m=>({type:m.type==='video'?'video':'image',src:m.src,name:m.name||'Media tambahan',caption:m.caption||''}))];
+        return {id:'supabase-'+row.id,remoteId:row.id,title:row.judul||'Tanpa judul',category:row.kategori||'Berita Desa',author:row.penulis||'Kontributor WDB',content:row.isi||'',date:created.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),createdAt:created.getTime(),publishedAt:created.toISOString(),image,media,status:row.status};
       });
       console.info('[WDB] Berita terbit Supabase:',publishedRemote.length);
     }
