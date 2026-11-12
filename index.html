@@ -282,6 +282,15 @@ nav{width:100%;overflow:hidden}
 @media(max-width:600px){#teamDirectoryPage{padding:9px}.team-directory-grid{grid-template-columns:1fr}.team-directory-person img,.team-directory-person .team-avatar{width:58px;height:66px;flex-basis:58px}.team-directory-top{align-items:flex-start}}
 
 
+/* Galeri foto di bawah BERITA LAINNYA */
+.home-gallery-section{margin-top:28px}
+.home-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:12px;padding:12px 0;cursor:pointer}
+.home-gallery-grid .gallery-side-thumb{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:0 0 8px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+.home-gallery-grid .gallery-side-thumb img{width:100%;height:112px;object-fit:cover;border-radius:0}
+.home-gallery-grid .gallery-side-thumb>div{padding:0 8px}
+.home-gallery-grid .gallery-side-thumb b{font-size:12px;line-height:1.35}
+.home-gallery-grid .gallery-side-thumb small{display:block;margin-top:3px;font-size:10px}
+@media(max-width:520px){.home-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.home-gallery-grid .gallery-side-thumb img{height:100px}}
 /* Galeri foto: komponen tambahan terpisah, tidak mengubah gaya modul lama. */
 #sidebarGalleryPreview{cursor:pointer}#sidebarGalleryPreview:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .gallery-side-thumb{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
@@ -1463,7 +1472,14 @@ html,body{background:#fff!important;color:#24352c}
 <article class="card" data-cat="Wisata Desa"><div class="photo blue">WISATA DESA</div><div class="body"><span class="cat">Wisata Desa</span><h3>Potensi alam dan destinasi wisata desa</h3><p>Mengenalkan kekayaan alam, budaya, dan destinasi lokal.</p><div class="meta">Redaksi WDB</div></div></article>
 <article class="card" data-cat="Produk Desa"><div class="photo gold">PRODUK UNGGULAN</div><div class="body"><span class="cat">Produk Desa</span><h3>Produk lokal dan karya unggulan masyarakat desa</h3><p>Promosi produk, kerajinan, pangan, dan hasil usaha desa.</p><div class="meta">Redaksi WDB</div></div></article>
 <article class="card" data-cat="BUMDes"><div class="photo">BUM DESA</div><div class="body"><span class="cat">BUMDes</span><h3>Informasi usaha dan perkembangan BUM Desa</h3><p>Kabar unit usaha, inovasi, dan kontribusi BUMDes bagi desa.</p><div class="meta">Redaksi WDB</div></div></article>
-</div><div class="empty" id="empty">Belum ada berita lainnya pada kategori ini.</div><div id="newsPagination" class="wdb-article-pager"></div></section>
+</div><div class="empty" id="empty">Belum ada berita lainnya pada kategori ini.</div><div id="newsPagination" class="wdb-article-pager"></div>
+<section class="home-gallery-section" aria-label="Galeri Foto">
+  <div class="news-list-heading"><h2>GALERI FOTO</h2><small>Dokumentasi kegiatan desa</small></div>
+  <div id="sidebarGalleryPreview" class="home-gallery-grid" role="button" tabindex="0" aria-label="Buka galeri foto">
+    <div class="team-side-empty">Memuat foto galeri...</div>
+  </div>
+</section>
+</section>
 <aside>
 <!-- Panel pencarian, galeri samping, dan kategori samping disembunyikan sesuai permintaan. Elemen pencarian tersembunyi dipertahankan agar skrip lama tetap berjalan. -->
 <div hidden aria-hidden="true"><input id="q" type="search"><button id="go" type="button">Cari</button></div>
@@ -2540,6 +2556,7 @@ renderPosts().catch(err=>{const s=document.getElementById('adminStatus');if(s)s.
        if(typeof item==='string')return item;
        if(item&&typeof item.url==='string')return item.url;
        if(item&&typeof item.src==='string')return item.src;
+       if(item&&typeof item.publicUrl==='string')return item.publicUrl;
        return '';
      }).filter(url=>/^https?:\/\//i.test(url));
      return {
@@ -2603,7 +2620,7 @@ renderPosts().catch(err=>{const s=document.getElementById('adminStatus');if(s)s.
  document.getElementById('galleryNavLink')?.addEventListener('click',e=>{e.preventDefault();openGalleryPage();});
  document.getElementById('galleryClose')?.addEventListener('click',closeGalleryPage);
  async function renderGallerySidebar(){
-   const holder=document.getElementById('sidebarGalleryPreview');if(!holder)return;const items=(await getPublicApprovedGallery()).slice(0,2);holder.innerHTML='';
+   const holder=document.getElementById('sidebarGalleryPreview');if(!holder)return;const items=(await getPublicApprovedGallery()).slice(0,8);holder.innerHTML='';
    if(!items.length){holder.innerHTML='<p class="team-side-empty">Belum ada foto galeri. Foto dapat ditambahkan melalui Admin → Isi Galeri.</p>';return;}
    items.forEach(item=>{const row=document.createElement('div');row.className='gallery-side-thumb';
      const img=document.createElement('img');img.src=item.image;img.alt=item.title||'Foto kegiatan';
@@ -2698,7 +2715,7 @@ renderPosts().catch(err=>{const s=document.getElementById('adminStatus');if(s)s.
  }
  async function openWdbAdViewer(ad){
    const viewer=document.getElementById('wdbAdViewer');if(!viewer||!ad)return;
-   try{wdbViewerAds=await getAds();}catch(err){wdbViewerAds=[];}
+   try{wdbViewerAds=await getPublicApprovedAds();}catch(err){wdbViewerAds=[];}
    if(!wdbViewerAds.length)wdbViewerAds=[ad];
    wdbViewerIndex=Math.max(0,wdbViewerAds.findIndex(item=>item.id===ad.id));
    showWdbAdAt(wdbViewerIndex);
@@ -2719,8 +2736,22 @@ renderPosts().catch(err=>{const s=document.getElementById('adminStatus');if(s)s.
    if(viewer&&e.target===viewer){e.preventDefault();closeWdbAdViewer();}
  },true);
  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeWdbAdViewer();else if(e.key==='ArrowLeft'&&document.getElementById('wdbAdViewer')?.classList.contains('open'))showWdbAdAt(wdbViewerIndex-1);else if(e.key==='ArrowRight'&&document.getElementById('wdbAdViewer')?.classList.contains('open'))showWdbAdAt(wdbViewerIndex+1);});
+ async function getPublicApprovedAds(){
+   const {data,error}=await wdbApprovedTeamClient
+     .from('wdb_iklan')
+     .select('id,nama,tautan,gambar_url,aktif,created_at')
+     .eq('aktif',true)
+     .order('created_at',{ascending:false});
+   if(error)throw new Error('Gagal memuat iklan Supabase: '+error.message);
+   return (data||[]).filter(row=>row.gambar_url).map(row=>({
+     id:row.id,
+     title:row.nama||'Iklan WDB',
+     image:row.gambar_url,
+     link:row.tautan||''
+   }));
+ }
  async function renderAds(){
-   const slider=document.getElementById('adSlider');if(!slider)return;if(adAutoTimer){clearInterval(adAutoTimer);adAutoTimer=null;}const ads=await getAds();slider.innerHTML='';
+   const slider=document.getElementById('adSlider');if(!slider)return;if(adAutoTimer){clearInterval(adAutoTimer);adAutoTimer=null;}const ads=await getPublicApprovedAds();slider.innerHTML='';
    if(!ads.length){
      slider.innerHTML='<div class="ad-slide active"><div class="ad-placeholder"><span class="ad-icon">✦</span><div><b>SLIDER IKLAN</b><small>Tempat gambar iklan atau informasi mitra</small></div></div></div>';
    }else{
