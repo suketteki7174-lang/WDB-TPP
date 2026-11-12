@@ -1696,7 +1696,11 @@ html,body{background:#fff!important;color:#24352c}
   </div>
 </section>
 <footer><div class="foot"><div><b>WDB • WARTA DESA BONDOWOSO</b><p>Portal Informasi dan Berita TPP P3MD Kab. Bondowoso. Media publikasi kegiatan, informasi, pembangunan, dan potensi desa.</p></div><div><b>MENU INFORMASI</b><p>Berita Desa · Dana Desa · Pemerintahan · Wisata Desa · Pendampingan</p><p>© <span id="year"></span> WDB – TPP P3MD Kabupaten Bondowoso</p></div></div></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const WDB_PUBLIC_SUPABASE_URL='https://afzbcqnbgxtpffrqorfy.supabase.co';
+const WDB_PUBLIC_SUPABASE_KEY='sb_publishable_bLIv3hwfommmCUo3PIacQw_4_M1Z2zq';
+const wdbPublicClient=window.supabase.createClient(WDB_PUBLIC_SUPABASE_URL,WDB_PUBLIC_SUPABASE_KEY);
 const d=new Date();
 document.getElementById('year').textContent=d.getFullYear();
 
@@ -1788,8 +1792,29 @@ let currentNewsPage=1;
 const newsPageSize=6;
 
 async function renderPosts(){
-  const posts=await getPosts();
-  cachedWdbPosts=posts.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const {data,error}=await wdbPublicClient.from('wdb_berita')
+    .select('*').eq('status','terbit').order('created_at',{ascending:false});
+  if(error) throw new Error('Berita Supabase gagal dimuat: '+error.message);
+  cachedWdbPosts=(data||[]).map(row=>{
+    const mainImage=row.foto_url||row.gambar_url||'';
+    let media=[];
+    if(Array.isArray(row.media_urls)) media=row.media_urls;
+    else if(typeof row.media_urls==='string'){try{media=JSON.parse(row.media_urls)||[]}catch(e){media=[];}}
+    const normalizedMedia=media.map((item,index)=>{
+      if(typeof item==='string')return {type:/\\.(mp4|webm|mov)(\\?|$)/i.test(item)?'video':'image',src:item,name:'Foto '+(index+2)};
+      return {type:item.type||'image',src:item.src||item.url||'',name:item.name||item.caption||('Foto '+(index+2))};
+    }).filter(item=>item.src);
+    return {
+      ...row,id:row.id,title:row.judul||row.title||'Tanpa judul',
+      category:row.kategori||row.category||'Berita',
+      author:row.penulis||row.author||'Redaksi WDB',
+      content:row.isi||row.content||'',
+      image:mainImage,
+      media:mainImage?[{type:'image',src:mainImage,name:'Foto utama'},...normalizedMedia]:normalizedMedia,
+      createdAt:row.created_at?new Date(row.created_at).getTime():0,
+      date:row.created_at?new Date(row.created_at).toLocaleDateString('id-ID'):''
+    };
+  }).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   await renderNewsManager();
   renderPortalSections();
 }
@@ -2257,7 +2282,7 @@ document.getElementById('adminForm').addEventListener('submit',async e=>{
  }catch(err){status.textContent='Gagal menyimpan: '+(err.message||'Periksa izin/kapasitas penyimpanan browser.');}
  finally{submit.disabled=false;}
 });
-renderPosts().catch(err=>{const s=document.getElementById('adminStatus');if(s)s.textContent='Database berita tidak dapat dibuka: '+err.message;});
+renderPosts().catch(err=>{console.error('WDB: berita publik gagal dimuat dari Supabase:',err);const list=document.getElementById('news');if(list)list.innerHTML='<div class="empty" style="display:block">Berita belum dapat dimuat. Periksa izin baca publik tabel wdb_berita di Supabase.</div>';});
 // Data tim tetap localStorage; iklan dan gambar disimpan di IndexedDB.
  const teamKey='wdb_team_profiles_v1';
  let editingAdId=null;
@@ -2681,7 +2706,7 @@ renderPosts().catch(err=>{const s=document.getElementById('adminStatus');if(s)s.
  }
  async function openWdbAdViewer(ad){
    const viewer=document.getElementById('wdbAdViewer');if(!viewer||!ad)return;
-   try{wdbViewerAds=await getAds();}catch(err){wdbViewerAds=[];}
+   try{wdbViewerAds=await getPublicAds();}catch(err){wdbViewerAds=[];}
    if(!wdbViewerAds.length)wdbViewerAds=[ad];
    wdbViewerIndex=Math.max(0,wdbViewerAds.findIndex(item=>item.id===ad.id));
    showWdbAdAt(wdbViewerIndex);
@@ -2730,10 +2755,20 @@ renderPosts().catch(err=>{const s=document.getElementById('adminStatus');if(s)s.
    if(viewer&&e.target===viewer){e.preventDefault();closeWdbAdViewer();}
  },true);
  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeWdbAdViewer();else if(e.key==='ArrowLeft'&&document.getElementById('wdbAdViewer')?.classList.contains('open'))showWdbAdAt(wdbViewerIndex-1);else if(e.key==='ArrowRight'&&document.getElementById('wdbAdViewer')?.classList.contains('open'))showWdbAdAt(wdbViewerIndex+1);});
+ async function getPublicAds(){
+   const {data,error}=await wdbPublicClient.from('wdb_iklan').select('*')
+     .eq('aktif',true).order('created_at',{ascending:false});
+   if(error)throw new Error('Iklan Supabase gagal dimuat: '+error.message);
+   return (data||[]).map(row=>({
+     ...row,id:row.id,title:row.nama||row.judul||'Iklan WDB',
+     link:row.tautan||row.link||'',image:row.gambar_url||row.image||'',
+     createdAt:row.created_at?new Date(row.created_at).getTime():0
+   })).filter(ad=>ad.image);
+ }
  async function renderAds(){
    const holder=document.getElementById('adSlider');if(!holder)return;
    if(adAutoTimer){clearInterval(adAutoTimer);adAutoTimer=null;}
-   const ads=await getAds();holder.innerHTML='';
+   const ads=await getPublicAds();holder.innerHTML='';
    if(!ads.length){
      holder.innerHTML='<div class="ad-placeholder"><span class="ad-icon">✦</span><div><b>IKLAN WDB</b><small>Tempat gambar iklan atau informasi mitra</small></div></div>';
    }else{
@@ -2838,7 +2873,7 @@ document.getElementById('adForm').addEventListener('submit',async e=>{
 migrateLegacyTeams().then(()=>Promise.all([renderTeam(),renderSidebarTeam(),renderTeamManager()])).catch(err=>{
   const s=document.getElementById('teamStatus');if(s)s.textContent='Data tim belum dapat dimuat: '+err.message;
 });
-renderAds().catch(err=>{const s=document.getElementById('adStatus');if(s)s.textContent='Database iklan gagal dibuka: '+err.message;});
+renderAds().catch(err=>{console.error('WDB: iklan publik gagal dimuat dari Supabase:',err);const holder=document.getElementById('adSlider');if(holder)holder.innerHTML='<div class="ad-placeholder"><b>IKLAN BELUM DAPAT DIMUAT</b><small>Periksa izin baca publik tabel wdb_iklan di Supabase.</small></div>';});
 refreshGalleryViews().catch(err=>{const s=document.getElementById('galleryStatus');if(s)s.textContent='Database galeri belum dapat dibuka: '+err.message;});
 
 
