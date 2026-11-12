@@ -598,7 +598,7 @@ nav { overflow: visible !important; }
 .stack.wdb-berita-terbaru-bawah{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;margin:16px 0 24px!important;width:100%!important}
 .stack.wdb-berita-terbaru-bawah>.head{grid-column:1/-1!important;display:flex!important;align-items:center!important;justify-content:space-between!important;border-bottom:2px solid #174b37!important;padding-bottom:8px!important}
 .stack.wdb-berita-terbaru-bawah>.card{display:flex!important;min-width:0!important}
-@media(max-width:650px){.stack.wdb-berita-terbaru-bawah{grid-template-columns:1fr!important}}
+@media(max-width:520px){.stack.wdb-berita-terbaru-bawah{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}}
 
 
 /* Paksa latar halaman tetap putih pada HP meskipun perangkat memakai mode gelap */
@@ -1346,6 +1346,72 @@ html,body{background:#fff!important;color:#24352c}
 .ad-static-caption{font-size:11px;color:var(--g);padding-top:5px;}
 .ad-static-empty{font-size:12px;color:#78847b;padding:18px;text-align:center;}
 @media(max-width:520px){.ad-static-grid{grid-template-columns:repeat(auto-fill,minmax(85px,1fr));gap:8px}.ad-static-item img{height:90px}}
+
+/* PERAPIAN KARTU BERITA TERBARU: foto di atas, judul di bawah foto */
+.stack.wdb-berita-terbaru-bawah>.card.mini{
+  display:flex!important;
+  flex-direction:column!important;
+  min-width:0!important;
+  overflow:hidden!important;
+}
+.stack.wdb-berita-terbaru-bawah>.card.mini>.photo{
+  display:block!important;
+  width:100%!important;
+  height:112px!important;
+  min-height:112px!important;
+  flex:none!important;
+  padding:0!important;
+  background-size:cover!important;
+  background-position:center!important;
+}
+.stack.wdb-berita-terbaru-bawah>.card.mini>.body{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  min-width:0!important;
+  padding:10px 11px!important;
+  gap:5px!important;
+}
+.stack.wdb-berita-terbaru-bawah>.card.mini .cat{
+  display:block!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.stack.wdb-berita-terbaru-bawah>.card.mini h3{
+  display:-webkit-box!important;
+  -webkit-box-orient:vertical!important;
+  -webkit-line-clamp:2!important;
+  overflow:hidden!important;
+  max-width:100%!important;
+  margin:0!important;
+  font-size:14px!important;
+  line-height:1.35!important;
+  overflow-wrap:anywhere!important;
+}
+.stack.wdb-berita-terbaru-bawah>.card.mini .meta{
+  display:block!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:10px!important;
+}
+@media(max-width:650px){
+  .stack.wdb-berita-terbaru-bawah>.card.mini>.photo{
+    height:100px!important;
+    min-height:100px!important;
+  }
+}
+/* Lebar kartu Berita Terbaru mengikuti kisi foto Galeri Beranda */
+.stack.wdb-berita-terbaru-bawah{
+  grid-template-columns:repeat(auto-fill,minmax(135px,1fr))!important;
+}
+@media(max-width:520px){
+  .stack.wdb-berita-terbaru-bawah{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+}
+
 </style>
 <style id="wdb-ad-portrait-zoom-only">
 /* Penyesuaian khusus iklan: rasio 9:16 seragam dan animasi zoom in lalu zoom out.
