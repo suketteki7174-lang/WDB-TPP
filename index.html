@@ -2547,11 +2547,33 @@ renderPosts().catch(err=>{console.error('WDB: berita publik gagal dimuat dari Su
  });
  document.getElementById('galleryAddMedia')?.addEventListener('click',()=>galleryFileInput?.click());
  let editingGalleryId=null;
- async function getGallery(){const db=await openAdsDB();return new Promise((resolve,reject)=>{
-   const tx=db.transaction('gallery','readonly'),req=tx.objectStore('gallery').getAll();
-   req.onsuccess=()=>resolve((req.result||[]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)));
-   req.onerror=()=>reject(req.error||new Error('Gagal membaca galeri foto.'));
- });}
+ async function getGallery(){
+   // Galeri publik mengambil hanya konten yang sudah disetujui dan aktif di Supabase.
+   const {data,error}=await wdbPublicClient
+     .from('wdb_galeri')
+     .select('id,judul,kategori,lokasi,media_urls,aktif')
+     .eq('aktif',true);
+   if(error) throw new Error('Gagal memuat Galeri Supabase: '+error.message);
+   return (data||[]).map(row=>{
+     let media=row.media_urls;
+     if(typeof media==='string'){
+       try{media=JSON.parse(media)||[];}catch(e){media=[media];}
+     }
+     if(!Array.isArray(media)) media=[];
+     const images=media.map(item=>{
+       if(typeof item==='string') return item;
+       return item && (item.url||item.src) ? (item.url||item.src) : '';
+     }).filter(Boolean);
+     return {
+       id:row.id,
+       title:row.judul||'Dokumentasi kegiatan desa',
+       category:row.kategori||'',
+       location:row.lokasi||'',
+       images,
+       image:images[0]||''
+     };
+   }).filter(item=>item.images.length>0);
+ }
  async function putGallery(item){const db=await openAdsDB();return new Promise((resolve,reject)=>{
    const tx=db.transaction('gallery','readwrite');tx.objectStore('gallery').put(item);
    tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error||new Error('Gagal menyimpan foto galeri.'));
